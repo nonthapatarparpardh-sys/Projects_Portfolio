@@ -1,0 +1,814 @@
+---
+title: "LSCA Individual Assignment"
+output: html_document
+author: Nonthapat Arparpardh 
+date: "2025-03-13"
+---
+
+
+#### Report Structure:
+## <span style="font-size: 14px;">Store 46673 (California, Ninth Street)</span>
+- <span style="font-size: 12px;">Initial Observations, Time-series decomposition, Train-Test split</span>  
+- <span style="font-size: 12px;">Training data Plot and Time Series Decomposition</span>  
+- <span style="font-size: 12px;"><strong>Q1.</strong> Holt-Winters model</span>  
+- <span style="font-size: 12px;"><strong>Q2.</strong> ARIMA model</span>  
+- <span style="font-size: 12px;"><strong>Q3.</strong> Performance comparison</span>  
+
+## <span style="font-size: 14px;">Store 4904 (California, Shattuck Sq)</span>
+- <span style="font-size: 12px;">Initial Observations, Time-series decomposition, Train-Test split</span>  
+- <span style="font-size: 12px;">Training data Plot and Time Series Decomposition</span>  
+- <span style="font-size: 12px;"><strong>Q1.</strong> Holt-Winters model</span>  
+- <span style="font-size: 12px;"><strong>Q2.</strong> ARIMA model</span>  
+- <span style="font-size: 12px;"><strong>Q3.</strong> Performance comparison</span>  
+
+## <span style="font-size: 14px;">Store 12631 (New York, Myrtle Avenue)</span>
+- <span style="font-size: 12px;">Initial Observations, Time-series decomposition, Train-Test split</span>  
+- <span style="font-size: 12px;">Training data Plot and Time Series Decomposition</span>  
+- <span style="font-size: 12px;"><strong>Q1.</strong> Holt-Winters model</span>  
+- <span style="font-size: 12px;"><strong>Q2.</strong> ARIMA model</span>  
+- <span style="font-size: 12px;"><strong>Q3.</strong> Performance comparison</span>  
+
+## <span style="font-size: 14px;">Store 20974 (New York, Whitney Avenue)</span>
+- <span style="font-size: 12px;">Initial Observations, Time-series decomposition, Train-Test split</span>  
+- <span style="font-size: 12px;">Training data Plot and Time Series Decomposition</span>  
+- <span style="font-size: 12px;"><strong>Q1.</strong> Holt-Winters model</span>  
+- <span style="font-size: 12px;"><strong>Q2.</strong> ARIMA model</span>  
+- <span style="font-size: 12px;"><strong>Q3.</strong> Performance comparison</span>  
+
+## <span style="font-size: 14px;">Q4. Final Forecast (using the optimal model amongst all the models)</span>
+
+\newpage
+
+```{r,results = FALSE,setup, message=FALSE, warning=FALSE,echo=FALSE}
+library(forecast)
+library(tseries)
+library(tidyverse)
+```
+
+```{r, echo=FALSE}
+#Accessing the (cleaned) data
+
+setwd("/Users/nonthapatarparpardh/Desktop/Imperial MSc Business Analytics/LSCA/R LSCA Notes")
+
+data_lettuce <- read.csv("lettuce_cleaned.csv", header = TRUE)
+```
+
+```{r, echo=FALSE}
+#Splitting data for the four stores and cleaning each
+
+#store_46673
+data_46673 <- data_lettuce[data_lettuce$store_46673..ounces. > 0, c(3)]
+
+#store_4904
+data_4904 <- data_lettuce[data_lettuce$store_46673..ounces. > 0, c(4)]
+data_4904 <- data_4904[-c(1:8)] #remove rows with 0
+#data_4904
+
+#store_12631
+data_12631 <- data_lettuce[data_lettuce$store_46673..ounces. > 0, c(5)]
+#data_12631
+
+#store_20974
+data_20974 <- data_lettuce[data_lettuce$store_46673..ounces. > 0, c(6)]
+data_20974 <- data_20974[-c(1:15)] #remove rows with 0 and outliers
+#data_20974
+```
+
+```{r, echo=FALSE}
+#Convert to time-series
+
+#store_46673
+ts_data_46673 <- ts(data_46673, frequency = 7)  
+
+#store_4904
+ts_data_4904 <- ts(data_4904, frequency = 7)
+
+#store_12631
+ts_data_12631 <- ts(data_12631, frequency = 7)
+
+#store_20974
+ts_data_20974 <- ts(data_20974, frequency = 7)
+```
+
+### Store 46673 (California, Ninth Street)
+
+#### Initial Observations 
+```{r, echo=FALSE}
+autoplot(ts_data_46673) + 
+  ggtitle("Store 46673 Demand") + 
+  xlab("Period") + ylab("Sales") + 
+  theme_minimal()
+```
+
+#### Time-series decomposition
+```{r, echo=FALSE}
+# Visualize the time series data
+ts_data_46673 %>% 
+  stl(s.window = "periodic") %>% 
+  autoplot() +
+  ggtitle("STL Decomposition of Store 46673 Demand") + 
+  theme_minimal()
+```
+
+#### Train-Test split 
+```{r, echo=FALSE}
+# --- testing data store_46673
+store_46673_train <- ts(ts_data_46673[1:(length(ts_data_46673) - 14)], frequency = 7)
+
+store_46673_train
+
+# ---training data store_46673
+data_store_46673_test <- ts_data_46673[(length(ts_data_46673) - 13):length(ts_data_46673)]
+
+store_46673_test <- ts(data_store_46673_test, frequency = 7, start = c(13, 6)) 
+
+store_46673_test
+```
+
+#### Training data Plot and Time Series Decomposition
+
+By observing the plotted time series of the training data, there aren't any clear indication of the time series being non-stationary, however, observing just the plot is insufficient. Therefore, through observing the time series decomposition of the training data, it can be seen that there is no trend as the grey-bar is relatively large. However, there is a significant seasonal factor as depicted by the small grey-bar in the seasonal plot.
+```{r, echo=FALSE}
+autoplot(store_46673_train) + 
+  ggtitle("Store 46673 Lettuce Demand") + 
+  xlab("Period") + ylab("Demand") + 
+  theme_minimal()
+
+store_46673_train %>% 
+  stl(s.window = "periodic") %>% 
+  autoplot() +
+  ggtitle("STL Decomposition of Store 46673 Demand") + 
+  theme_minimal()
+```
+
+
+#### Q1. Holt-Winters model
+
+For the Holt-Winters model, the modelling will use the ets() function as the HoltWinters() function requires information to construct the initialisation which is hard to obtain. 
+
+To determine the parameters of the ets() function, the automatic model selection function of the ets() function will be used. Additionally, the analysis of the time series decomposition will be used to verify the parameters.
+
+```{r, echo=FALSE}
+store_46673_ets <- ets(store_46673_train, model = "ZZZ")
+store_46673_ets
+```
+The ets results show that there is an additive error, no trend and an additive seasonal factor, ETA(A,N,A). The model smoothing parameters alpha = 0.0612 and beta = 1e-04. The initial state values is the constant l = 146.0165  and the initial seasonal factors for the first few periods are 32.6444, 19.1329, 25.5759, 20.8428, -70.5411, -47.1212, 19.466. And there is no initial trend value. 
+
+This is reflected by the decomposition where there is no particular trend as depicted by the large grey bar. Seasonal fluctuations remain approximately constant over time, regardless of the time, therefore is additive.
+
+Thus it is concluded that the optimal Holt-Winters model is ETA(A,N,A)
+
+
+#### Q2. ARIMA model 
+
+For the ARIMA model, the Box-Jenkins procedure will be performed to select and evaluate the best model. 
+
+To formally test for the data's stationarity, the ADF, PP and KPSS tests will be performed. The stationarity tests indicate that the data is stationary. 
+```{r, echo=FALSE}
+adf.test(store_46673_train)
+pp.test(store_46673_train)
+kpss.test(store_46673_train)
+```
+However, as the observed time series decomposition suggests, there is a clear seasonal factor in the data set although the ADF, PP and KPSS only captures the existence of trend and not seasonlity. Therefore the differencing orders for both non-seasonal and seasonal component must be determined. And results show that although there is no differencing required for non-seasonal, first-order seasonal differencing is required for the data due to its seasonality.
+```{r, echo=FALSE}
+ndiffs(store_46673_train)  # Non-seasonal differencing
+nsdiffs(store_46673_train) # Seasonal differencing
+```
+An initial observation can be made through the ACF and PACF of the training data to get an overview of the ARIMA model. It can be seen in the ACF plot that there are significant spikes on the 7th, 14th and 21st day. This suggests that there is a strong presence of seasonal pattern with a period of 7, in other words there is a weekly seasonality where each same day of the week is highly correlated. For the Seasonal ARIMA model, these recurring spikes in the ACF may indicate the existence of a seasonal MA component as seen from the spikes of lags 7, 14 and 21. Whereas the PACF plot shows a spike in lag 2 which then exponentially decays, along with the previously observed spike (in the ACF) in lag 7. This suggests a potential non-seasonal AR component, where there is an observed direct correlation between the current period and observation in period + 2, thus the spike at lag 7 supports the observed seasonality in the ACF and through the output of the nsdiffs() function of 1. This suggests a seasonal differencing is required. 
+```{r, echo=FALSE}
+ggtsdisplay(store_46673_train)
+```
+
+After applying the first-order seasonal differencing of lag 7, both the ndiffs() and nsdiffs() functions now has an output of 0. This indicates that the data does not require any differencing and is stationary. 
+```{r, echo=FALSE}
+store_46673_train_diff1 <- diff(store_46673_train, lag= 7, differences = 1)
+
+ndiffs(store_46673_train_diff1)  # Non-seasonal differencing
+nsdiffs(store_46673_train_diff1) # Seasonal differencing
+```
+To further verify, the stationarity tests are also performed, thus results confirms that the data is stationary. 
+```{r, echo=FALSE}
+adf.test(store_46673_train_diff1)
+pp.test(store_46673_train_diff1)
+kpss.test(store_46673_train_diff1)
+```
+By observing the ACF and PACF of the first-order seasonal differenced data, the majority of lags are now uncorrelated, with only lag 7 being correlated. This suggests that there is still a seasonal MA component in the data. 
+```{r, echo=FALSE}
+ggtsdisplay(store_46673_train_diff1)
+```
+After using the various statistical testing to rationalize the differencing and characteristics of the data, the auto.arima() function is used to suggest the optimal model. 
+```{r, echo=FALSE}
+auto_model <- auto.arima(store_46673_train, d = 1, trace = TRUE)
+```
+Results show that the optimal ARIMA model has parameters ARIMA(0,1,1)(0,1,1)[7], while the next best alternative model is ARIMA(0,1,2)(0,1,1)[7]. Thus will be used for testing and evaluation. Additionally, the auto.arima() function confirms that a seasonal differencing is required to obtain the best model, as seen in the D=1 first-order seasonal difference component in both models. 
+
+The candidate models will now be trained:
+```{r, echo=FALSE}
+store_46673_m1 <- Arima(store_46673_train, order = c(0, 1, 1), 
+                seasonal = list(order = c(0, 1, 1), period = 7))
+
+store_46673_m2 <- Arima(store_46673_train, order = c(0, 1, 2), 
+                seasonal = list(order = c(0, 1, 1), period = 7) )
+```
+
+Residual analysis will be performed to ensure that the residuals are not intercorrelated. 
+
+The results show that all the lags of the ACF are within the 95% confidence interval, indicating that there are no correlation between the residuals.
+```{r, echo=FALSE}
+checkresiduals(store_46673_m1)
+checkresiduals(store_46673_m2)
+```
+
+The models are then used to generate the forecast, and evaluated based on its accuracy. Since the test set contains 14 days (2 weeks) of data, 14 forecasted data will be generated.
+```{r, echo=FALSE}
+# Generate 2-weeks ahead forecasts
+store_46673_f1 <- forecast(store_46673_m1, h = 14) 
+store_46673_f2 <- forecast(store_46673_m2, h = 14) 
+```
+
+The forecasts are evaluated with the testing data, thus the accuracy is evaluated.
+
+As seen in the accuracy report on the performance of each model on the testing data, the first model (ARIMA(0,1,1)(0,1,1)[7]) is more accurate and better overall. This is due to the model having a lower RMSE, supported by it's lower AICc score during the auto.arima() process. 
+```{r, echo=FALSE}
+# Evaluate forecast accuracy
+store_46673_accuracy_f1 <- accuracy(store_46673_f1, store_46673_test)
+store_46673_accuracy_f2 <- accuracy(store_46673_f2, store_46673_test)
+
+print(store_46673_accuracy_f1)
+print(store_46673_accuracy_f2)
+```
+
+Therefore the best ARIMA model is: 
+(ARIMA(0,1,1)(0,1,1)[7]) 
+
+#### Q3. Performance comparison 
+
+The performance between the Holt-Winters and ARIMA model are compared. Firstly, both models are used to forecast the next 14 day's demand to correspond to the 14 data in the testing set.
+```{r, echo=FALSE}
+#Generate 2 weeks forecast from HW(ETS) and ARIMA)
+store_46673_ets_f <- forecast(store_46673_ets, h = 14)
+store_46673_ARIMA_f <- forecast(store_46673_m1, h = 14)
+```
+
+Based on the accuracy results, the Holt-Winters model is considerably more accurate than the ARIMA model, with a lower RMSE value on the test set of 38.53718 as opposed to the ARIMA model's RMSE of 41.28399. 
+```{r, echo=FALSE}
+#Accuracy of each model
+store_46673_ets_accuracy <- accuracy(store_46673_ets_f, store_46673_test)
+
+store_46673_ARIMA_accuracy <- accuracy(store_46673_ARIMA_f, store_46673_test)
+
+print(store_46673_ets_accuracy)
+print(store_46673_ARIMA_accuracy)
+```
+This concludes that for store 46673, the best model for forecasting lettuce demand is the Holt-Winters model: 
+ETS(A,N,A)
+
+### Store 4904 (California, Shattuck Sq)
+
+#### Initial Observations 
+```{r, echo=FALSE}
+autoplot(ts_data_4904) + 
+  ggtitle("Shampoo Sales") + 
+  xlab("Period") + ylab("Sales") + 
+  theme_minimal()
+```
+
+#### Time-series decomposition
+```{r, echo=FALSE}
+# Visualize the time series data
+ts_data_4904 %>% 
+  stl(s.window = "periodic") %>% 
+  autoplot() +
+  ggtitle("STL Decomposition of Shampoo Sales") + 
+  theme_minimal()
+```
+
+#### Train-Test split 
+```{r, echo=FALSE}
+# --- testing data store_4904
+store_4904_train <- ts(ts_data_4904[1:(length(ts_data_4904) - 14)], frequency = 7)
+
+store_4904_train
+
+# ---training data store_4904
+data_store_4904_test <- ts_data_4904[(length(ts_data_4904) - 13):length(ts_data_4904)]
+
+store_4904_test <- ts(data_store_4904_test, frequency = 7, start = c(12, 5)) 
+
+store_4904_test
+```
+
+#### Training Data Plot and Time Series Decomposition
+
+By observing the plotted time series of this store's training data, there aren't any clear trend or seasonal factors as seen in both grey bars being relatively larger (than that of store 46673). From this observation only, it may be possible to assume that the data is already stationary, although would not be 100% accurate. 
+```{r, echo=FALSE}
+autoplot(store_4904_train) + 
+  ggtitle("Store 46673 Lettuce Demand") + 
+  xlab("Period") + ylab("Demand") + 
+  theme_minimal()
+
+store_4904_train %>% 
+  stl(s.window = "periodic") %>% 
+  autoplot() +
+  ggtitle("STL Decomposition of Shampoo Sales") + 
+  theme_minimal()
+```
+#### Q1. Holt-Winters model
+
+Similarly, the Holt-Winters modelling will use the ets() function as the HoltWinters() function requires information to construct the initialisation which is hard to obtain.
+
+To determine the parameters of the ets() function, the automatic model selection function of the ets() function will be used. Additionally, the analysis of the time series decomposition will be used to verify the parameters.
+
+```{r, echo=FALSE}
+store_4904_ets <- ets(store_4904_train, model = "ZZZ")
+store_4904_ets
+
+```
+The ets results show that Holt-Winter model for store 4904 is similar to that of store 46673. There is an additive error, no trend and an additive seasonal factor, ETA(A,N,A). The model smoothing parameters alpha = 0.194 and beta = 1e-04. The initial state values is the constant l = 329.2286 and the initial seasonal factors for the first few periods are 6.3379, 52.1586, 56.1676, 42.0506, 29.5549 and -91.1832, thus there is no initial trend.
+           
+This can be seen in the decomposition where there is no particular trend as shown by the large grey bar. Seasonal fluctuations also remain approximately constant over time, regardless of the time, therefore is additive.
+
+Therefore it is concluded that the optimal Holt-Winters model is ETS(A,N,A)
+
+#### Q2. ARIMA model 
+
+For the ARIMA model, again, the Box-Jenkins procedure will be performed to select and evaluate the best model. 
+
+To formally test for the data's stationarity, the ADF, PP and KPSS tests will be performed. The stationarity tests here indicates that the data is stationary. 
+```{r, echo=FALSE}
+adf.test(store_4904_train)
+pp.test(store_4904_train)
+kpss.test(store_4904_train)
+```
+
+To further confirm that the data is in the state of stationarity, the order of differencing will be determined: 
+```{r, echo=FALSE}
+ndiffs(store_4904_train)  # Non-seasonal differencing
+nsdiffs(store_4904_train) # Seasonal differencing
+```
+
+Results indicate that only the non-seasonal part of the data is stationary, and the seasonal part still requires first order differencing.
+
+This can be observed in the ACF and PACF as well, as there are similar spikes to store 46673. There are significant spikes in lags 7, 14 and 21. Additionally, there are also lags in between those periods (7,14,21) such as in lags 3 and 4, 10 and 11 and so on. This suggests that there may be a seasonal MA component, thus there is a clear weekly seasonality where each day of the week is highly correlated. The PACF shows a spike in lag 1, 6 and 7, indicating a possible existence of a seasonal AR component, where the current current observation is directly influenced by its value 1,6 and 7 periods (days) ago.
+```{r, echo=FALSE}
+ggtsdisplay(store_4904_train)
+```
+
+After applying the first-order seasonal differencing of lag 7, both the ndiffs() and nsdiffs() functions now has an output of 0. Indicating  that the data does not require any differencing and is stationary. 
+```{r, echo=FALSE}
+store_4904_train_diff1 <- diff(store_4904_train, lag= 7, differences = 1)
+
+ndiffs(store_4904_train_diff1)  # Non-seasonal differencing
+nsdiffs(store_4904_train_diff1) # Seasonal differencing
+```
+
+The ACF and PACF plots of after performing seasonal differencing by the first-order on the data shows that the majority of lags are now uncorrelated, with only lag 7 being correlated. This suggests that there is still a seasonal MA component in the data that the model must capture. 
+
+```{r, echo=FALSE}
+ggtsdisplay(store_4904_train_diff1)
+```
+
+After performing differncing to obtain a stationary data set, the auto.arima() function will be used to determine the optimal model.
+```{r, echo=FALSE}
+auto_model <- auto.arima(store_4904_train, D = 1, trace = TRUE)
+
+```
+Results show that the optimal ARIMA model is ARIMA(1,0,2)(2,1,0)[7], with the next best alternative model of ARIMA being ARIMA(1,0,1)(2,1,0)[7]. Similar to store 46673, the optimal ARIMA model has it that seasonal differencing is required, shown in the D=1 in both models. 
+
+The candidate models will now be trained:
+```{r, echo=FALSE}
+store_4904_m1 <- Arima(store_4904_train, order = c(1, 0, 2), 
+                seasonal = list(order = c(2, 1, 0), period = 7))
+
+store_4904_m2 <- Arima(store_4904_train, order = c(1, 0, 1), 
+                seasonal = list(order = c(2, 1, 0), period = 7) )
+```
+
+Residual analysis will be performed to ensure that the residuals are not intercorrelated. 
+
+The results show that all the lags of the ACF are within the 95% confidence interval, indicating that there are no correlation between the residuals.
+```{r, echo=FALSE}
+checkresiduals(store_4904_m1)
+checkresiduals(store_4904_m2)
+```
+
+The models are used to perform the forecasting, and evaluated based on its accuracy. Again, the test set contains 14 days (2 weeks) worth of data, therefore 14 forecasted data will be generated. 
+```{r, echo=FALSE}
+# Generate 2-weeks ahead forecasts
+store_4904_f1 <- forecast(store_4904_m1, h = 14) 
+store_4904_f2 <- forecast(store_4904_m2, h = 14) 
+```
+
+The accuracy of the models' forecasts are evaluated with the testing data. 
+
+Suprisingly, the alternative model has a slightly lower RMSE of 48.12504, compared to the best model (lowest AICc score) of 43.87772. The AICc score for the two models are relatively similar. Thus this difference in the RMSE suggests that the alternative model, ARIMA(1,0,1)(2,1,0)[7] should be used to perform the forecast (amongst the ARIMA models).
+
+```{r, echo=FALSE}
+# Evaluate forecast accuracy
+store_4904_accuracy_f1 <- accuracy(store_4904_f1, store_4904_test)
+store_4904_accuracy_f2 <- accuracy(store_4904_f2, store_4904_test)
+
+print(store_4904_accuracy_f1)
+print(store_4904_accuracy_f2)
+```
+Therefore the best ARIMA model is: 
+ARIMA(1,0,1)(2,1,0)[7]
+
+#### Q3. Performance comparison
+
+The performance between the Holt-Winters and ARIMA model for store 4904 are compared. Initially, both models are used to forecast the next 14 day’s demand to match the 14 data in the testing set
+
+```{r, echo=FALSE}
+#Generate 2 weeks forecast from HW(ETS) and ARIMA)
+store_4904_ets_f <- forecast(store_4904_ets, h = 14)
+store_4904_ARIMA_f <- forecast(store_4904_m1, h = 14)
+```
+
+Similar to store 46673, store 4904 is suggested to use the Holt-Winters model for forecasting. Based on the accuracy results, the Holt-Winters model is relatively more accurate than the ARIMA model, with a lower RMSE value of 37.75467 as opposed to the ARIMA model’s RMSE of 43.87772.
+
+```{r, echo=FALSE}
+#Accuracy of each model
+store_4904_ets_accuracy <- accuracy(store_4904_ets_f, store_4904_test)
+
+store_4904_ARIMA_accuracy <- accuracy(store_4904_ARIMA_f, store_4904_test)
+
+print(store_4904_ets_accuracy)
+print(store_4904_ARIMA_accuracy)
+```
+This concludes that for store 4904, the best model for forecasting is the Holt-Winters model: ETS(A,N,A)
+
+### Store 12631 (New York, Myrtle Avenue)
+
+#### Initial Observations 
+
+```{r, echo=FALSE}
+autoplot(ts_data_12631) + 
+  ggtitle("Shampoo Sales") + 
+  xlab("Period") + ylab("Sales") + 
+  theme_minimal()
+```
+
+#### Time-series decomposition
+```{r, echo=FALSE}
+# Visualize the time series data
+ts_data_12631 %>% 
+  stl(s.window = "periodic") %>% 
+  autoplot() +
+  ggtitle("STL Decomposition of Shampoo Sales") + 
+  theme_minimal()
+```
+
+#### Train-Test split 
+```{r, echo=FALSE}
+# --- testing data store_12631
+store_12631_train <- ts(ts_data_12631[1:(length(ts_data_12631) - 14)], frequency = 7)
+
+store_12631_train
+
+# ---training data store_12631
+data_store_12631_test <- ts_data_12631[(length(ts_data_12631) - 13):length(ts_data_12631)]
+
+store_12631_test <- ts(data_store_12631_test, frequency = 7, start = c(13, 6)) 
+
+store_12631_test
+```
+
+#### Training data Plot and Time Series Decomposition
+
+The plotted time series of store 12631 training data shows a relatively weak positive trend. When observed through the time series decomposition, it can be seen that trend has a shorter grey bar in the decomposition. This can be interpreted as trend contributing to a greater proportion of the variation of the time series, hence there is a trend component in the time series.
+```{r, echo=FALSE}
+autoplot(store_12631_train) + 
+  ggtitle("Store 12631 Lettuce Demand") + 
+  xlab("Period") + ylab("Demand") + 
+  theme_minimal()
+
+store_12631_train %>% 
+  stl(s.window = "periodic") %>% 
+  autoplot() +
+  ggtitle("STL Decomposition of Store 12631 Lettuce Demand") + 
+  theme_minimal()
+```
+
+#### Q1. Holt-Winters model
+Again, the Holt-Winters model will use the ets() function through the automatic model selection function etc(ZZZ). And the analysis of the time series decomposition will be used to verify the parameters.
+```{r, echo=FALSE}
+store_12631_ets <- ets(store_12631_train, model = "ZZZ")
+store_12631_ets
+```
+The ets results show that the Holt-Winters model for store 12631 has a multiplicative error, an additively damped trend and a multiplicative seasonal factor, ETA(M,Ad,M). The model smoothing paramers are alpha = 1e-04, beta = 1e-04 and gamma = 1e-04. The initial state values is the constant l = 214.8392, initial trend is 1.968 and initial seasonal factors for the first few periods are 1.0449, 0.9662, 0.9145, 0.9813 ,0.853, 1.1398, 1.1003.
+
+The time series decomposition shows that the errors and the seasonal pattern is proportional to the level of the time series. Where as the trend is initially additive until around half of the total observations, but then the trend is damped, resulting in its effects on the future forecast to diminish over time.
+
+Therefore it can be concluded that the optimal Holt-Winters model is ETS(M,Ad,M)
+
+#### Q2. ARIMA model 
+
+The Box-Jenkins procedure will be performed to select and evaluate the best ARIMA model. 
+
+To formally test for the data's stationarity, the ADF, PP and KPSS tests will be performed. Results indicate that the stationarity test are conflicting. The ADF and PP tests suggests that the data is stationary, with both having small p-values, thus leads to the rejection of the null hypothesis that the data is non-stationary. However, the KPSS test result indicates that the time series data, is in fact, non-stationary as the KPSS test result has a small p-value, leading to the rejection of the null hypothesis of stationarity.
+
+```{r, echo=FALSE}
+adf.test(store_12631_train)
+pp.test(store_12631_train)
+kpss.test(store_12631_train)
+```
+This can be supported by the observations made in the time series composition, where there indeed is non-stationarity, most likely due to the trend. 
+
+The ndiffs() and nsdiffs() functions are then use to find the order of differencing required for the time series data to be stationary. 
+
+The results show that first-order non-seasonal differencing should be performed, whereas no seasonal differencing is required. This further verifies that store 12631 data has a significant trend component, rather than a seasonal component. 
+```{r, echo=FALSE}
+ndiffs(store_12631_train)
+nsdiffs(store_12631_train)
+```
+
+To further support the fact that the time series is non-stationary, The ACF shows a slow decay from lag 7 to lag 21. This suggests that the past observations are strongly correlated with current values over a long period, thus confirming that there is a trend in the time series data and differencing is required.
+
+```{r, echo=FALSE}
+ggtsdisplay(store_12631_train)
+```
+
+After applying the first-order differencing of lag 7, both the ndiffs() and nsdiffs() functions now has an output of 0. Indicating  that the data does not require any differencing and is stationary. 
+
+```{r, echo=FALSE}
+store_12631_train_diff1 <- diff(store_12631_train, differences = 1)
+
+ndiffs(store_12631_train_diff1)  # Non-seasonal differencing
+nsdiffs(store_12631_train_diff1) # Seasonal differencing
+```
+
+The ACF and PACF plots after performing first order differencing shows that there is now no exponential decay from a certain lag period. However, now there is a negative spike at lag 1, possibly suggesting that the model integrates an MA component of 1 as the strong negative correlation suggests a strong relationship between the observation and the preceding observation. Thus The few spikes in lags 7, 14 and 21 suggests that the data may not be entirely stationary where there is weekly seasonality similar to stores 46673 and 4904 as observed. This opposes the nsdiffs() function results, therefore it is best to proceed with the auto.arima() function to determine the optimal ARIMA parameters to account for trend and/or seasonality. 
+```{r, echo=FALSE}
+ggtsdisplay(store_12631_train_diff1)
+```
+
+The auto.arima() function is then used on the training set of store 12631, where d = 1 and D = 1 to account that there is a possibility that there both trend and seasonality components, therefore must be adjusted using differencing for both.
+
+```{r, echo=FALSE}
+auto_model <- auto.arima(store_12631_train, d = 1, D = 1, trace = TRUE)
+```
+Results show that the optimal ARIMA model is ARIMA(0,1,1)(0,1,1)[7], with the alternative model of ARIMA(1,1,1)(0,1,1)[7]. The model includes both the non-seasonal and seasonal first-order differencing.
+
+The candidate models will now be trained:
+```{r, echo=FALSE}
+store_12631_m1 <- Arima(store_12631_train, order = c(0, 1, 1), 
+                seasonal = list(order = c(0, 1, 1), period = 7))
+
+store_12631_m2 <- Arima(store_12631_train, order = c(1, 1, 1), 
+                seasonal = list(order = c(0, 1, 1), period = 7) )
+
+```
+Residual analysis will be performed to ensure that the residuals are not correlated
+
+The results show that all the lags of the ACF are within the 95% confidence interval, indicating that there are no correlation between the residuals.
+```{r, echo=FALSE}
+checkresiduals(store_12631_m1)
+checkresiduals(store_12631_m2)
+
+```
+The selected models will then perform the forecasting, and is again, evaluated based on its accuracy. Once again, the there will be 14 forecasted data generated from the model, as the test set is equivalent 14 days (2 weeks) of data.
+```{r, echo=FALSE}
+# Generate 2-weeks ahead forecasts
+store_12631_f1 <- forecast(store_12631_m1, h = 14) 
+store_12631_f2 <- forecast(store_12631_m2, h = 14) 
+```
+
+The models forecasts will be evaluated through its accuracy. 
+
+The two models are very similar in terms of accuracy, as seen from its RMSE, where the better model is actually the alternative model ARIMA(1,1,1)(0,1,1)[7] where it is just slightly more accurate in predicting the demand. However, in terms of the AICc score, the best model ARIMA(0,1,1)(0,1,1)[7] has a significantly lower AICc score, implying that the model has a better balance between its fit to the training data and its complexity. Therefore it will chosen to perform the forecast.
+```{r, echo=FALSE}
+store_12631_accuracy_f1 <- accuracy(store_12631_f1, store_12631_test)
+store_12631_accuracy_f2 <- accuracy(store_12631_f2, store_12631_test)
+
+print(store_12631_accuracy_f1)
+print(store_12631_accuracy_f2)
+
+```
+As a result, the best ARIMA model is: ARIMA(0,1,1)(0,1,1)[7].
+
+
+#### Q3. Performance comparison
+
+The performance of the Holt-Winters and ARIMA model for store 12631 will be compared by using the forecast for the next 14 days' demand to match the 14 data in the testing set. 
+
+```{r, echo=FALSE}
+#Generate 2 weeks forecast from HW(ETS) and ARIMA)
+store_12631_ets_f <- forecast(store_12631_ets, h = 14)
+store_12631_ARIMA_f <- forecast(store_12631_m2, h = 14)
+```
+
+The Holt-Winters model and ARIMA model ran on the store 12531 suggests that the ARIMA model is the better model. This is due to the higher accuracy of the ARIMA model, with a lower RMSE of 43.41912, compared to the Holt-Winters RMSE of 44.30622.
+```{r, echo=FALSE}
+store_12631_ets_accuracy <- accuracy(store_12631_ets_f, store_12631_test)
+
+store_12631_ARIMA_accuracy <- accuracy(store_12631_ARIMA_f, store_12631_test)
+
+print(store_12631_ets_accuracy)
+print(store_12631_ARIMA_accuracy)
+```
+This concludes that for store 12631, the best model for forecasting is the ARIMA model: ARIMA(0,1,1)(2,0,0)[7]
+
+-----
+### Store 20974 (New York, Whitney Avenue)
+
+#### Initial Observations 
+```{r, echo=FALSE}
+autoplot(ts_data_20974) + 
+  ggtitle("Store 20974 Lettuce Demand") + 
+  xlab("Period") + ylab("Sales") + 
+  theme_minimal()
+```
+
+#### Time-series decomposition
+
+Through initial observation the plotted time series of this store’s training data, there aren’t any clear trend or seasonal factors as both grey bars being relatively long (than that of store 46673 and store 12631). From this observation, it may be possible to assume that the data is already stationary, although further testing is required to verify such assumption
+```{r, echo=FALSE}
+# Visualize the time series data
+ts_data_20974 %>% 
+  stl(s.window = "periodic") %>% 
+  autoplot() +
+  ggtitle("STL Decomposition of Store 46673 Lettuce Demand") + 
+  theme_minimal()
+```
+
+#### Train-Test split 
+```{r, echo=FALSE}
+# --- testing data store_20974
+store_20974_train <- ts(ts_data_20974[1:(length(ts_data_20974) - 14)], frequency = 7)
+
+store_20974_train
+
+# ---training data store_20974
+data_store_20974_test <- ts_data_12631[(length(ts_data_20974) - 13):length(ts_data_20974)]
+
+store_20974_test <- ts(data_store_20974_test, frequency = 7, start = c(11, 5)) 
+
+store_20974_test
+```
+
+#### Q1. Holt-Winters model
+
+For store 20974, the Holt-Winters model will once again use the ets() function to construct the model. The parameters will also be ZZZ in order to use the automatic model selection function. And the parameters will be verified using the data's time series decomposition.
+
+```{r, echo=FALSE}
+store_20974_ets <- ets(store_20974_train, model = "ZZZ")
+store_20974_ets
+```
+The ets results show that the Holt-Winters model for store 20974 is similar to those of stores 46673 and 4094, with parameters ETS(A,N,A).The model smoothing parameters alpha = 0.1905and beta = 1e-04. The initial state values is the constant l = 209.6333  and the initial seasonal factors for the first few periods are 12.0706, 29.4123, 17.4096, 18.8407, 4.0938, -65.3266 and -16.5004. Thus there is no initial trend value.
+
+This can be seen in the decomposition where there is no  trend as shown by the large grey bar. Seasonal fluctuations also remain approximately constant over time, regardless of the time and is additive.
+
+Thus it is concluded that the optimal Holt-Winters model is ETA(A,N,A)
+
+#### Q2. ARIMA model 
+
+For the ARIMA model, again, the Box-Jenkins procedure will be performed to select and evaluate the best model.
+
+Again, the ADF, PP and KPSS tests will be performed to test the data's sationarity. The stationarity tests here indicates that the data is stationary as the ADF and PP rejects the null hypothesis of non-staionarity, and the KPSS test results fails to reject the null hypothesis of stationarity. Based on these results, differencing may not be required.
+
+```{r, echo=FALSE}
+adf.test(store_20974_train)
+pp.test(store_20974_train)
+kpss.test(store_20974_train)
+```
+To further confirm stationarity, the order of differencing for this store's data will be determined:
+
+```{r, echo=FALSE}
+ndiffs(store_20974_train)  # Non-seasonal differencing
+nsdiffs(store_20974_train) # Seasonal differencing
+```
+
+The results of the ndiffs() and nsdiffs() shows that there are no differencing required for both the non-seasonal and seasonal parts of the data.
+
+However, this information is opposed when observing the ACF and PACF plots. There is a spike in lag 1 and lag 7 in the ACF, indicating a possible AR component of at least 1, and how there may be seasonality with periods of 7 which means an AR or MA component of 7 may be required for the ARIMA model to capture such spike. Although this means no differencing is needed as the data is statistically stationary, but must still model the autocorrelation structure of this store's data through the AR and MA components.
+```{r, echo=FALSE}
+ggtsdisplay(store_20974_train)
+```
+
+With that, the auto.arim() will be used to determine the optimal ARIMA model.
+```{r, echo=FALSE}
+auto_model <- auto.arima(store_20974_train, D = 1 ,trace = TRUE)
+
+```
+Results show that the optimal ARIMA model is ARIMA(1,0,0)(2,1,0)[7], with the next best alternative model of ARIMA being ARIMA(1,0,1)(2,1,0)[7]. This store (20974) is the only store that does not require any differencing in the model fitting process, thus indicates that the lettuce demand pattern at this store is already stationary in its mean and variance.
+
+The candidate models will now be trained:
+```{r, echo=FALSE}
+store_20974_m1 <- Arima(store_20974_train, order = c(2,1,0), 
+                seasonal = list(order = c(1, 0, 0), period = 7))
+
+store_20974_m2 <- Arima(store_4904_train, order = c(1, 0, 1), 
+                seasonal = list(order = c(2, 1, 0), period = 7) )
+```
+
+Residual analysis will be performed to ensure that the residuals are not intercorrelated.
+
+The results show that all the lags of the ACF are within the 95% confidence interval, indicating that there are no correlation between the residuals.
+```{r, echo=FALSE}
+checkresiduals(store_20974_m1)
+checkresiduals(store_20974_m2)
+```
+The models are used to perform the forecasting, and evaluated based on its accuracy. Once again, the test set contains 14 days (2 weeks) worth of data, therefore 14 forecasted data will be generated.
+```{r, echo=FALSE}
+# Generate 2-weeks ahead forecasts
+store_20974_f1 <- forecast(store_20974_m1, h = 14) 
+store_20974_f2 <- forecast(store_20974_m2, h = 14) 
+```
+
+The models accuracy are evaluated using the testing data through the RMSE value.
+
+Results show that the best model (one with lowest AICc score) has a significantly higher RMSE, therefore the alternative model ARIMA(1,0,1)(2,1,0)[7] is the better model This concludes that the optimal model is ARIMA(1,0,1)(2,1,0)[7].
+
+```{r, echo=FALSE}
+# Evaluate forecast accuracy
+store_20974_accuracy_f1 <- accuracy(store_20974_f1, store_20974_test)
+store_20974_accuracy_f2 <- accuracy(store_20974_f2, store_20974_test)
+
+print(store_20974_accuracy_f1)
+print(store_20974_accuracy_f2)
+
+```
+Therefore, the best ARIMA model for this store is: ARIMA(1,0,1)(2,1,0)[7]
+
+#### Q3. Performance comparison
+
+The performance of the Holt-Winters and ARIMA model for store 20974 is compared through the forecast of the next 14 days' lettuce demand, again, to match the 14 data of the testing set.
+
+```{r, echo=FALSE}
+store_20974_ets_f <- forecast(store_20974_ets, h = 14)
+store_20974_ARIMA_f <- forecast(store_20974_m2, h = 14) #alternative model 
+```
+
+The Holt-Winters model and ARIMA model for the store 20974 shows that the ARIMA model is the better model due to its significantly lower RMSE at 89.93421 compared to the Holt-Winters model of 107.47122.
+```{r, echo=FALSE}
+store_20974_ets_accuracy <- accuracy(store_20974_ets_f, store_20974_test)
+
+store_20974_ARIMA_accuracy <- accuracy(store_20974_ARIMA_f, store_20974_test)
+
+print(store_20974_ets_accuracy)
+print(store_20974_ARIMA_accuracy)
+```
+This concludes that for store 20974, the best model for forecasting is the ARIMA model: ARIMA(1,0,1)(2,1,0)[7]
+
+#### Q4. Final Forecast (using the optimal model amongst all the models)
+
+The model selections from the previous parts conclude that:
+
+- **Store 46673** (California, Ninth Street) will use the **Holt-Winter model: ETS(A,N,A)**
+- **Store 4904** (California, Shattuck Sq) will use the **Holt-Winter model: ETS(A,N,A)**
+- **Store 12631** (New York, Myrtle Avenue) will use the **ARIMA model: ARIMA(0,1,1)(0,1,1)[7]**
+- **Store 20974** (New York, Whitney Avenue) will use the **ARIMA model: ARIMA(1,0,1)(2,1,0)[7]**
+
+The forecast is created for each store, and can be seen in each of the store's plot. 
+```{r, echo=FALSE}
+store_46673_model <- ets(ts_data_46673, model = "ANA")
+store_46673_final_forecast <- forecast(store_46673_model, h = 14)
+autoplot(store_46673_final_forecast) + 
+  ggtitle("Final Store 46673 Demand Forecast") +
+  xlab("Period") + ylab("Demand") +
+  theme_minimal()
+
+store_4904_model <- ets(ts_data_4904, model = "ANA")
+store_4904_final_forecast <- forecast(store_4904_model, h = 14)
+autoplot(store_4904_final_forecast) + 
+  ggtitle("Final Store 4904 Demand Forecast") +
+  xlab("Period") + ylab("Demand") +
+  theme_minimal()
+
+store_12631_model <- Arima(ts_data_12631, order = c(0,1,1), seasonal = list(order = c(0, 1, 1), period = 7) )
+store_12631_final_forecast <- forecast(store_12631_model, h = 14)
+autoplot(store_12631_final_forecast) + 
+  ggtitle("Final Store 12631 Demand Forecast") +
+  xlab("Period") + ylab("Demand") +
+  theme_minimal()
+
+store_20974_model <- Arima(ts_data_20974, order = c(1,0,1), seasonal = list(order = c(2, 1, 0), period = 7) )
+store_20974_final_forecast <- forecast(store_20974_model, h = 14)
+autoplot(store_20974_final_forecast) + 
+  ggtitle("Final Store 20974 Demand Forecast") +
+  xlab("Period") + ylab("Demand") +
+  theme_minimal()
+```
+
+The forecast lettuce demand for the next the next two weeks (from 06/16/2015 to 06/29/2015) is saved into the .csv file "LSCA_Individual_Assignment_lettuce_forecast.csv"
+```{r, echo=FALSE}
+forecast_dates <- seq.Date(from = as.Date("2025-06-16"), to = as.Date("2025-06-29"), by = "day")
+
+store_46673_forecast <- round(store_46673_final_forecast$mean, 0)
+store_4904_forecast <- round(store_4904_final_forecast$mean, 0)
+store_12631_forecast <- round(store_12631_final_forecast$mean, 0)
+store_20974_forecast <- round(store_20974_final_forecast$mean, 0)
+
+forecast_data <- data.frame(
+  date = forecast_dates,
+  `store_46673 (ounces)` = store_46673_forecast,
+  `store_4904 (ounces)` = store_4904_forecast,
+  `store_12631 (ounces)` = store_12631_forecast,
+  `store_20974 (ounces)` = store_20974_forecast
+)
+
+print(forecast_data)
+
+write.csv(forecast_data, file = "LSCA_Individual_Assignment_lettuce_forecast.csv")
+```
+
